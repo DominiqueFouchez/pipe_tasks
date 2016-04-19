@@ -31,7 +31,8 @@ import lsst.afw.math as afwMath
 import lsst.afw.table as afwTable
 import lsst.meas.astrom as measAstrom
 from lsst.pipe.tasks.registerImage import RegisterTask
-from lsst.meas.algorithms import SourceDetectionTask, PsfAttributes, SingleGaussianPsf
+from lsst.meas.algorithms import SourceDetectionTask, PsfAttributes, SingleGaussianPsf, \
+     SecondMomentStarSelectorTask, SecondMomentStarSelectorConfig
 from lsst.ip.diffim import ImagePsfMatchTask, DipoleMeasurementTask, DipoleAnalysis, \
     SourceFlagChecker, KernelCandidateF, cast_KernelCandidateF, makeKernelBasisList, \
     KernelCandidateQa, DiaCatalogSourceSelectorTask, DiaCatalogSourceSelectorConfig, \
@@ -91,7 +92,8 @@ class ImageDifferenceConfig(pexConfig.Config):
         doc = "astrometry task; used to match sources to reference objects, but not to fit a WCS",
     )
     sourceSelector = pexConfig.ConfigurableField(
-        target=DiaCatalogSourceSelectorTask,
+        ###DF target=DiaCatalogSourceSelectorTask,
+        target=SecondMomentStarSelectorTask,
         doc="Source selection algorithm",
     )
     subtract = pexConfig.ConfigurableField(
@@ -140,8 +142,8 @@ class ImageDifferenceConfig(pexConfig.Config):
 
     def setDefaults(self):
         # Set default source selector and configure defaults for that one and some common alternatives
-        self.sourceSelector.name = "secondMoment"
-        self.sourceSelector["secondMoment"].clumpNSigma = 2.0
+        ###DF self.sourceSelector.name = "secondMoment"
+        ###DF self.sourceSelector["secondMoment"].clumpNSigma = 2.0
         # defaults are OK for catalog and diacatalog
 
         self.subtract.kernel.name = "AL"
@@ -167,6 +169,9 @@ class ImageDifferenceConfig(pexConfig.Config):
 
         # For shuffling the control sample
         random.seed(self.controlRandomSeed)
+
+        self.getTemplate.retarget(GetCalexpAsTemplateTask)
+
 
     def validate(self):
         pexConfig.Config.validate(self)
@@ -278,6 +283,7 @@ class ImageDifferenceTask(pipeBase.CmdLineTask):
         templateExposure = None  # Stitched coadd exposure
         templateSources = None   # Sources on the template image
         if self.config.doSubtract:
+            print templateIdList
             template = self.getTemplate.run(exposure, sensorRef, templateIdList=templateIdList)
             templateExposure = template.exposure
             templateSources = template.sources
